@@ -1,5 +1,5 @@
 import os
-import telegram
+from telegram import ext
 import openai
 
 # Устанавливаем токены и ключи из переменных окружения
@@ -44,11 +44,11 @@ def handle_message(update, context):
 # Основной цикл программы
 if __name__ == '__main__':
     # Создаем объект для работы с телеграмом
-    updater = telegram.ext.Updater(token=TELEGRAM_TOKEN, use_context=True)
+    updater = ext.Updater(token=TELEGRAM_TOKEN, use_context=True)
 
     # Создаем обработчик сообщений
-    message_handler = telegram.ext.MessageHandler(
-        telegram.ext.Filters.text, handle_message)
+    message_handler = ext.MessageHandler(
+        ext.Filters.text, handle_message)
 
     # Регистрируем обработчик сообщений
     updater.dispatcher.add_handler(message_handler)
