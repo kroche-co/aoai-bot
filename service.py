@@ -43,17 +43,17 @@ def handle_message(update, context):
 
         # Send a request to OpenAI
         response = openai.ChatCompletion.create(
-            prompt=message_text,
-            max_tokens=2048,
-            n=1,
-            stop=None,
-            temperature=0.6,
-            model="gpt-3.5-turbo"
+            engine="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are helping to manage a real K8S cluster and you have the ability to run any commands on it through messages starting with 'EXECUTE:'."},
+                {"role": "user", "content": message_text}
+            ],
+            temperature=0.5
         )
         logging.debug(f"Request sent to OpenAI for processing")
 
         # Get the response from OpenAI
-        response_text = response.choices[0].text.strip()
+        response_text = response.choices[0].message.content.strip()
         logging.debug(f"Received response from OpenAI: {response_text}")
 
         # Check for the "EXECUTE:" tag
