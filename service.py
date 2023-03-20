@@ -8,7 +8,7 @@ from telegram import ext, Bot
 # Set tokens and keys from environment variables
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-SYSTEM_MESSAGE = os.getenv('SYSTEM_MESSAGE')
+# SYSTEM_MESSAGE = os.getenv('SYSTEM_MESSAGE')
 
 # Initialize Telegram bot
 bot = Bot(token=TELEGRAM_TOKEN)
@@ -48,7 +48,7 @@ def process_message_with_openai(message_text):
         model="gpt-3.5-turbo",
         max_tokens=2048,
         messages=[
-            {"role": "system", "content": SYSTEM_MESSAGE},
+            # {"role": "system", "content": SYSTEM_MESSAGE},
             {"role": "user", "content": message_text}
         ],
         temperature=0.66,
@@ -84,41 +84,41 @@ def handle_message(update, context, simulated_message=None):
         bot.send_message(chat_id=chat_id, text=response_text)
         logging.debug(f"Sent response to user {chat_id}: {response_text}")
 
-        if "<!EXECUTE>" in response_text:
-            # Execute a command
-            command_start = response_text.find("<!EXECUTE>") + len("<!EXECUTE>")
-            command_end = response_text.find("</EXECUTE>")
-            command = response_text[command_start:command_end].strip()
+        # if "<!EXECUTE>" in response_text:
+        #     # Execute a command
+        #     command_start = response_text.find("<!EXECUTE>") + len("<!EXECUTE>")
+        #     command_end = response_text.find("</EXECUTE>")
+        #     command = response_text[command_start:command_end].strip()
 
-            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
-            command_result, command_error = process.communicate()
-            command_output = command_result + command_error
+        #     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
+        #     command_result, command_error = process.communicate()
+        #     command_output = command_result + command_error
 
-            response_text = response_text.replace("<!EXECUTE>", "").replace("</EXECUTE>", "").strip()
-            response_text += f"\n\nOUTPUT: {command_output}"
-            if command_error:
-                response_text += f"\n\nERROR: {command_error}"
-                logging.debug(f"Executed command {command} with result {command_result}, error {command_error}")
+        #     response_text = response_text.replace("<!EXECUTE>", "").replace("</EXECUTE>", "").strip()
+        #     response_text += f"\n\nOUTPUT: {command_output}"
+        #     if command_error:
+        #         response_text += f"\n\nERROR: {command_error}"
+        #         logging.debug(f"Executed command {command} with result {command_result}, error {command_error}")
 
-                # Initialize the simulated message if it is None
-                if not simulated_message:
-                    simulated_message = ""
+        #         # Initialize the simulated message if it is None
+        #         if not simulated_message:
+        #             simulated_message = ""
 
-                # Append the command error to the simulated message
-                simulated_message += "\n\nThe command error is:\n\n" + command_error
+        #         # Append the command error to the simulated message
+        #         simulated_message += "\n\nThe command error is:\n\n" + command_error
 
-                # Truncate the message to the last 1024 tokens
-                simulated_message = truncate_text_to_tokens(simulated_message, 1024)
+        #         # Truncate the message to the last 1024 tokens
+        #         simulated_message = truncate_text_to_tokens(simulated_message, 1024)
 
-                handle_message(update, context, simulated_message=simulated_message)
+        #         handle_message(update, context, simulated_message=simulated_message)
 
-            else:
-                logging.debug(f"Executed command {command} with result {command_result}")
+        #     else:
+        #         logging.debug(f"Executed command {command} with result {command_result}")
 
-            # Send the response to the user
-            chat_id = update.message.chat_id
-            bot.send_message(chat_id=chat_id, text=response_text)
-            logging.debug(f"Sent response to user {chat_id}: {response_text}")
+        #     # Send the response to the user
+        #     chat_id = update.message.chat_id
+        #     bot.send_message(chat_id=chat_id, text=response_text)
+        #     logging.debug(f"Sent response to user {chat_id}: {response_text}")
 
     except Exception as e:
         logging.error(f"An error occurred while processing the user message: {e}")
