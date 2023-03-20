@@ -44,9 +44,8 @@ def handle_message(update, context):
         # Send a request to OpenAI
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            max_tokens=2048
+            max_tokens=2048,
             messages=[
-                {"role": "system", "content": ""},
                 {"role": "user", "content": message_text}
             ],
             temperature=0.5
