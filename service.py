@@ -2,7 +2,7 @@ import os
 import logging
 import subprocess
 import openai
-from openai import tokenizer
+from openai import tokens_to_bytes, bytes_to_tokens
 from concurrent.futures import ThreadPoolExecutor
 from telegram import ext, Bot
 
@@ -45,12 +45,13 @@ def process_message_with_openai(message_text):
     )
     return response
 
-# Function to truncate text to the last n tokens
-def truncate_text_to_tokens(text, n_tokens):
-    tokens = tokenizer.tokenize(text)
-    if len(tokens) > n_tokens:
-        tokens = tokens[-n_tokens:]
-    return tokenizer.detokenize(tokens)
+def truncate_text_to_tokens(text, max_tokens):
+    if tokens_to_bytes(text) > max_tokens:
+        tokens = text.split(' ')
+        while tokens_to_bytes(' '.join(tokens[-max_tokens:])) > max_tokens:
+            tokens.pop(0)
+        return ' '.join(tokens[-max_tokens:])
+    return text
 
 # Main function for handling user messages
 def handle_message(update, context, simulated_message=None):
@@ -64,9 +65,6 @@ def handle_message(update, context, simulated_message=None):
         # Get the message text from the user or the simulated message
         message_text = simulated_message if simulated_message else update.message.text
         logging.debug(f"Received message: {message_text}")
-
-        # Truncate message_text to the last 4096 tokens
-        message_text = truncate_text_to_tokens(message_text, 4096)
 
         # Use global ThreadPoolExecutor to process the message with OpenAI
         response = executor.submit(process_message_with_openai, message_text).result()
@@ -98,6 +96,9 @@ def handle_message(update, context, simulated_message=None):
             simulated_message = "The command output is:\n\n" + command_result
             if command_error:
                 simulated_message += "\n\nThe command error is:\n\n" + command_error
+
+            # Truncate the message to the last 4096 tokens
+            simulated_message = truncate_text_to_tokens(simulated_message, 4096)
 
             handle_message(update, context, simulated_message=simulated_message)
         else:
