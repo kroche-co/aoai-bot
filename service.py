@@ -45,17 +45,17 @@ def process_message_with_openai(message_text):
     return response
 
 # Main function for handling user messages
-def handle_message(update, context):
+def handle_message(update, context, simulated_message=None):
     try:
         # Check if the user is allowed to send messages
-        user_nickname = update.message.from_user.username
-        if user_nickname not in ALLOWED_USERS:
+        user_nickname = update.message.from_user.username if not simulated_message else None
+        if user_nickname and user_nickname not in ALLOWED_USERS:
             logging.warning(f"User {user_nickname} is not allowed to use the bot")
             return
 
-        # Get the message text from the user
-        message_text = update.message.text
-        logging.debug(f"Received message from user {user_nickname}: {message_text}")
+        # Get the message text from the user or the simulated message
+        message_text = simulated_message if simulated_message else update.message.text
+        logging.debug(f"Received message: {message_text}")
 
         # Use global ThreadPoolExecutor to process the message with OpenAI
         response = executor.submit(process_message_with_openai, message_text).result()
@@ -76,23 +76,24 @@ def handle_message(update, context):
             command_result, command_error = process.communicate()
 
             response_text = response_text.replace("<!EXECUTE>", "").replace("</EXECUTE>", "").strip()
-            response_text += f"\n\nOutput:\n{command_result}"
+            response_text += f"\n\nRESPONSE: {command_result}"
             if command_error:
                 response_text += f"\n\nERROR: {command_error}"
                 logging.debug(f"Executed command {command} with result {command_result}, error {command_error}")
             else:
                 logging.debug(f"Executed command {command} with result {command_result}")
 
-            # Send the command output to OpenAI for further processing
-            ai_response = executor.submit(process_message_with_openai, command_result).result()
-            ai_response_text = ai_response.choices[0].message.content.strip()
+            # Send the command result as a new message
+            simulated_message = "The command output is:\n\n" + command_result
+            if command_error:
+                simulated_message += "\n\nThe command error is:\n\n" + command_error
 
-            response_text += f"\n\nOpenAI response based on command output: {ai_response_text}"
-
-        # Send the response to the user
-        chat_id = update.message.chat_id
-        bot.send_message(chat_id=chat_id, text=response_text)
-        logging.debug(f"Sent response to user {chat_id}: {response_text}")
+            handle_message(update, context, simulated_message=simulated_message)
+        else:
+            # Send the response to the user
+            chat_id = update.message.chat_id
+            bot.send_message(chat_id=chat_id, text=response_text)
+            logging.debug(f"Sent response to user {chat_id}: {response_text}")
 
     except Exception as e:
         logging.error(f"An error occurred while processing the user message: {e}")
