@@ -23,11 +23,11 @@ def handle_message(update, context):
 
     # Отправляем запрос в OpenAI
     response = openai.Completion.create(
-        engine="text-davinci-002",
+        engine="text-davinci-003",
         prompt=message_text,
         max_tokens=1024,
         n=1,
-        stop=None,
+        stop="\n",
         temperature=0.7,
     )
 
