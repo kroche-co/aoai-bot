@@ -66,13 +66,11 @@ def handle_message(update, context, simulated_message=None):
             return
 
         # Get the message text from the user or the simulated message
-        message_text = simulated_message if simulated_message else update.message.text
+        message_text = simulated_message if simulated_message else translit(update.message.text, 'ru', reversed=True)
         logging.debug(f"Received message: {message_text}")
 
-        translit_text = translit(message_text, 'ru', reversed=True)
-
         # Use global ThreadPoolExecutor to process the message with OpenAI
-        response = executor.submit(process_message_with_openai, translit_text).result()
+        response = executor.submit(process_message_with_openai, message_text).result()
 
         logging.debug(f"Request sent to OpenAI for processing")
 
