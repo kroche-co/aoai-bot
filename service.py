@@ -2,8 +2,7 @@ import os
 import logging
 import subprocess
 import openai
-from transformers import pipeline, GPT2Tokenizer
-from concurrent.futures import ThreadPoolExecutor
+from transformers import GPT2Tokenizer
 from telegram import ext, Bot
 
 # Set tokens and keys from environment variables
@@ -52,7 +51,9 @@ def process_message_with_openai(message_text):
             {"role": "system", "content": SYSTEM_MESSAGE},
             {"role": "user", "content": message_text}
         ],
-        temperature=0.5
+        temperature=0.66,
+        presence_penalty=0.66,
+        frequency_penalty=0.66
     )
     return response
 
@@ -69,8 +70,8 @@ def handle_message(update, context, simulated_message=None):
         message_text = simulated_message if simulated_message else update.message.text
         logging.debug(f"Received message: {message_text}")
 
-        # Use global ThreadPoolExecutor to process the message with OpenAI
-        response = executor.submit(process_message_with_openai, message_text).result()
+        # Process the message with OpenAI
+        response = process_message_with_openai(message_text)
 
         logging.debug(f"Request sent to OpenAI for processing")
 
@@ -141,9 +142,6 @@ if __name__ == '__main__':
         # Register message handler
         updater.dispatcher.add_handler(message_handler)
 
-        # Create global ThreadPoolExecutor
-        executor = ThreadPoolExecutor()
-
         # Start the bot
         updater.start_polling()
         logging.info("Telegram bot is running and ready to work")
@@ -153,6 +151,3 @@ if __name__ == '__main__':
 
     except Exception as e:
         logging.error(f"An error occurred while running the Telegram bot: {e}")
-    finally:
-        # Clean up the ThreadPoolExecutor
-        executor.shutdown()
