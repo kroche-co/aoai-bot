@@ -43,6 +43,9 @@ def process_message_with_openai(message_text):
     )
     return response
 
+# Create global ThreadPoolExecutor
+executor = ThreadPoolExecutor()
+
 # Main function for handling user messages
 def handle_message(update, context):
     try:
@@ -56,9 +59,8 @@ def handle_message(update, context):
         message_text = update.message.text
         logging.debug(f"Received message from user {user_nickname}: {message_text}")
 
-        # Use ThreadPoolExecutor to process the message with OpenAI
-        with ThreadPoolExecutor() as executor:
-            response = executor.submit(process_message_with_openai, message_text).result()
+        # Use global ThreadPoolExecutor to process the message with OpenAI
+        response = executor.submit(process_message_with_openai, message_text).result()
 
         logging.debug(f"Request sent to OpenAI for processing")
 
