@@ -2,7 +2,7 @@ import os
 import logging
 import subprocess
 import openai
-from openai import tokens_to_bytes, bytes_to_tokens
+from openai.utils import convert_tokens_to_bytes, convert_bytes_to_tokens
 from concurrent.futures import ThreadPoolExecutor
 from telegram import ext, Bot
 
@@ -46,9 +46,9 @@ def process_message_with_openai(message_text):
     return response
 
 def truncate_text_to_tokens(text, max_tokens):
-    if tokens_to_bytes(text) > max_tokens:
+    if convert_tokens_to_bytes(text) > max_tokens:
         tokens = text.split(' ')
-        while tokens_to_bytes(' '.join(tokens[-max_tokens:])) > max_tokens:
+        while convert_tokens_to_bytes(' '.join(tokens[-max_tokens:])) > max_tokens:
             tokens.pop(0)
         return ' '.join(tokens[-max_tokens:])
     return text
