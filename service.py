@@ -43,7 +43,7 @@ def handle_message(update, context):
 
         # Send a request to OpenAI
         response = openai.ChatCompletion.create(
-            engine="gpt-3.5-turbo",
+            model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are helping to manage a real K8S cluster and you have the ability to run any commands on it through messages starting with 'EXECUTE:'."},
                 {"role": "user", "content": message_text}
