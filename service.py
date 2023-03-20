@@ -2,7 +2,7 @@ import os
 import logging
 import subprocess
 import openai
-from openai.utils import convert_tokens_to_bytes, convert_bytes_to_tokens
+from transformers import pipeline, GPT2Tokenizer
 from concurrent.futures import ThreadPoolExecutor
 from telegram import ext, Bot
 
@@ -45,10 +45,12 @@ def process_message_with_openai(message_text):
     )
     return response
 
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+
 def truncate_text_to_tokens(text, max_tokens):
-    if convert_tokens_to_bytes(text) > max_tokens:
-        tokens = text.split(' ')
-        while convert_tokens_to_bytes(' '.join(tokens[-max_tokens:])) > max_tokens:
+    if len(tokenizer.encode(text)) > max_tokens:
+        tokens = tokenizer.tokenize(text)
+        while len(tokenizer.encode(' '.join(tokens[-max_tokens:]))) > max_tokens:
             tokens.pop(0)
         return ' '.join(tokens[-max_tokens:])
     return text
