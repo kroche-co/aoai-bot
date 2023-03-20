@@ -42,13 +42,13 @@ def handle_message(update, context):
         logging.debug(f"Received message from user {user_nickname}: {message_text}")
 
         # Send a request to OpenAI
-        response = openai.Completion.create(
+        response = openai.ChatCompletion.create(
             prompt=message_text,
             max_tokens=2048,
             n=1,
             stop=None,
             temperature=0.6,
-            model="text-davinci-003"
+            model="gpt-3.5-turbo"
         )
         logging.debug(f"Request sent to OpenAI for processing")
 
