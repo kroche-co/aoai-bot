@@ -1,9 +1,10 @@
 import os
 import logging
 import subprocess
-from telegram import ext, Bot
 import openai
+from openai import tokenizer
 from concurrent.futures import ThreadPoolExecutor
+from telegram import ext, Bot
 
 # Set tokens and keys from environment variables
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -44,6 +45,13 @@ def process_message_with_openai(message_text):
     )
     return response
 
+# Function to truncate text to the last n tokens
+def truncate_text_to_tokens(text, n_tokens):
+    tokens = tokenizer.tokenize(text)
+    if len(tokens) > n_tokens:
+        tokens = tokens[-n_tokens:]
+    return tokenizer.detokenize(tokens)
+
 # Main function for handling user messages
 def handle_message(update, context, simulated_message=None):
     try:
@@ -56,6 +64,9 @@ def handle_message(update, context, simulated_message=None):
         # Get the message text from the user or the simulated message
         message_text = simulated_message if simulated_message else update.message.text
         logging.debug(f"Received message: {message_text}")
+
+        # Truncate message_text to the last 4096 tokens
+        message_text = truncate_text_to_tokens(message_text, 4096)
 
         # Use global ThreadPoolExecutor to process the message with OpenAI
         response = executor.submit(process_message_with_openai, message_text).result()
