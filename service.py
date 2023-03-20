@@ -116,5 +116,11 @@ if __name__ == '__main__':
         updater.start_polling()
         logging.info("Telegram bot is running and ready to work")
 
+        # Keep the main thread running
+        updater.idle()
+
     except Exception as e:
         logging.error(f"An error occurred while running the Telegram bot: {e}")
+    finally:
+        # Clean up the ThreadPoolExecutor
+        executor.shutdown()
