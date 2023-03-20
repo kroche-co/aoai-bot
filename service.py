@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 # Set tokens and keys from environment variables
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+SYSTEM_MESSAGE = os.getenv('SYSTEM_MESSAGE')
 
 # Initialize Telegram bot
 bot = Bot(token=TELEGRAM_TOKEN)
@@ -36,7 +37,7 @@ def process_message_with_openai(message_text):
         model="gpt-3.5-turbo",
         max_tokens=2048,
         messages=[
-            {"role": "system", "content": "The requests to execute a command or other instructions, imply the need to provide a working example of a command to be executed in a Debian environment with root privileges and to use the tags <!EXECUTE> and </EXECUTE> to denote the command."},
+            {"role": "system", "content": SYSTEM_MESSAGE},
             {"role": "user", "content": message_text}
         ],
         temperature=0.5
