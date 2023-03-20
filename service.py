@@ -44,8 +44,9 @@ def handle_message(update, context):
         # Send a request to OpenAI
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
+            max_tokens=2048
             messages=[
-                {"role": "system", "content": "You are helping to manage a real K8S cluster and you have the ability to run any commands on it through messages starting with 'EXECUTE:'."},
+                # {"role": "system", "content": "You are helping to manage a real K8S cluster and you have the ability to run any commands on it through messages starting with 'EXECUTE:'."},
                 {"role": "user", "content": message_text}
             ],
             temperature=0.5
@@ -56,12 +57,14 @@ def handle_message(update, context):
         response_text = response.choices[0].message.content.strip()
         logging.debug(f"Received response from OpenAI: {response_text}")
 
-        # Check for the "EXECUTE:" tag
-        if response_text.startswith("EXECUTE:"):
+        if "<!EXECUTE>" in response_text:
             # Execute a command
-            command = response_text.replace("EXECUTE:", "").strip()
+            command_start = response_text.find("<!EXECUTE>") + len("<!EXECUTE>")
+            command_end = response_text.find("</EXECUTE>")
+            command = response_text[command_start:command_end].strip()
             command_result = os.popen(command).read()
-            response_text = f"RESPONSE: {command_result}"
+            response_text = response_text.replace("<!EXECUTE>", "").replace("</EXECUTE>", "").strip()
+            response_text = f"{response_text}\n\nRESPONSE: {command_result}"
             logging.debug(f"Executed command {command} with result {command_result}")
 
         # Send the response to the user
