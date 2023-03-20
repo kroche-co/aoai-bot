@@ -22,6 +22,9 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 # List of allowed user nicknames
 ALLOWED_USERS = ['kukaryambik']
 
+# Create global ThreadPoolExecutor
+executor = ThreadPoolExecutor()
+
 # Handler for the /start command
 def start(update, context):
     try:
@@ -42,9 +45,6 @@ def process_message_with_openai(message_text):
         temperature=0.5
     )
     return response
-
-# Create global ThreadPoolExecutor
-executor = ThreadPoolExecutor()
 
 # Main function for handling user messages
 def handle_message(update, context):
