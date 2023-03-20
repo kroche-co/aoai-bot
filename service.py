@@ -44,7 +44,7 @@ def handle_message(update, context):
 # Основной цикл программы
 if __name__ == '__main__':
     # Создаем объект для работы с телеграмом
-    updater = ext.Updater(token=TELEGRAM_TOKEN, use_context=True)
+    updater = ext.Updater(token=TELEGRAM_TOKEN, use_context=True, request_kwargs={'proxy_url': 'socks5://'+PROXY_URL})
 
     # Создаем обработчик сообщений
     message_handler = ext.MessageHandler(
