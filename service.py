@@ -1,71 +1,79 @@
 import os
+import logging
 from telegram import ext, Bot
 import openai
 
-# Устанавливаем токены и ключи из переменных окружения
+# Set tokens and keys from environment variables
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
-# Инициализируем телеграм-бота
+# Initialize Telegram bot
 bot = Bot(token=TELEGRAM_TOKEN)
 
-# Инициализируем OpenAI API
+# Initialize OpenAI API
 openai.api_key = OPENAI_API_KEY
 
-# Обработчик команды /start
+# Set logging level to DEBUG
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.DEBUG)
+
+# Handler for the /start command
 def start(update, context):
-    context.bot.send_message(chat_id=update.message.chat_id, text="Привет! Я готов к работе.")
+    context.bot.send_message(chat_id=update.message.chat_id, text="Hello! I'm ready to work.")
+    logging.info(f"User {update.message.chat_id} started the bot")
 
-# Основная функция для обработки сообщений от пользователя
+# Main function for handling user messages
 def handle_message(update, context):
-    # Получаем текст сообщения от пользователя
+    # Get the message text from the user
     message_text = update.message.text
+    logging.debug(f"Received message from user {update.message.chat_id}: {message_text}")
 
-    # Отправляем запрос в OpenAI
+    # Send a request to OpenAI
     response = openai.Completion.create(
-        engine="davinci",
         prompt=message_text,
         max_tokens=2048,
         n=1,
         stop=None,
         temperature=0.7,
-        model="text-davinci-002"
+        model="text-davinci-003"
     )
+    logging.debug(f"Request sent to OpenAI for processing")
 
-    # Получаем ответ от OpenAI
+    # Get the response from OpenAI
     response_text = response.choices[0].text.strip()
+    logging.debug(f"Received response from OpenAI: {response_text}")
 
-    # Проверяем наличие метки "EXECUTE:"
+    # Check for the "EXECUTE:" tag
     if response_text.startswith("EXECUTE:"):
-        # Выполняем команду
+        # Execute a command
         command = response_text.replace("EXECUTE:", "").strip()
         command_result = os.popen(command).read()
         response_text = f"RESPONSE: {command_result}"
+        logging.debug(f"Executed command {command} with result {command_result}")
 
-    # Отправляем ответ пользователю
+    # Send the response to the user
     chat_id = update.message.chat_id
     bot.send_message(chat_id=chat_id, text=response_text)
+    logging.debug(f"Sent response to user {chat_id}: {response_text}")
 
-# Основной цикл программы
+# Main program loop
 if __name__ == '__main__':
-    # Создаем объект для работы с телеграмом
+    # Create an object for working with Telegram
     updater = ext.Updater(token=TELEGRAM_TOKEN, use_context=True)
 
-    # Создаем обработчики команд
+    # Create command handlers
     start_handler = ext.CommandHandler('start', start)
 
-    # Регистрируем обработчики команд
+    # Register command handlers
     updater.dispatcher.add_handler(start_handler)
 
-    # Создаем обработчик сообщений
+    # Create message handler
     message_handler = ext.MessageHandler(
         ext.Filters.text, handle_message)
 
-    # Регистрируем обработчик сообщений
+    # Register message handler
     updater.dispatcher.add_handler(message_handler)
 
-    # Запускаем бота
+    # Start the bot
     updater.start_polling()
-
-    # Запускаем цикл обработки сообщений
-    updater.idle()
+    logging.info("Telegram bot is running and ready to work")
