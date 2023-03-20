@@ -1,5 +1,5 @@
 import os
-from telegram import ext
+from telegram import ext, Bot
 import openai
 
 # Устанавливаем токены и ключи из переменных окружения
@@ -7,7 +7,7 @@ TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 # Инициализируем телеграм-бота
-bot = telegram.Bot(token=TELEGRAM_TOKEN)
+bot = Bot(token=TELEGRAM_TOKEN)
 
 # Инициализируем OpenAI API
 openai.api_key = OPENAI_API_KEY
