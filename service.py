@@ -5,7 +5,6 @@ import openai
 from transformers import pipeline, GPT2Tokenizer
 from concurrent.futures import ThreadPoolExecutor
 from telegram import ext, Bot
-# from transliterate import translit
 
 # Set tokens and keys from environment variables
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -98,6 +97,17 @@ def handle_message(update, context, simulated_message=None):
             if command_error:
                 response_text += f"\n\nERROR: {command_error}"
                 logging.debug(f"Executed command {command} with result {command_result}, error {command_error}")
+
+                # Send the command result as a new message
+                simulated_message = "The command output is:\n\n" + command_result
+                if command_error:
+                    simulated_message += "\n\nThe command error is:\n\n" + command_error
+
+                # Truncate the message to the last 1024 tokens
+                simulated_message = truncate_text_to_tokens(simulated_message, 1024)
+
+                handle_message(update, context, simulated_message=simulated_message)
+
             else:
                 logging.debug(f"Executed command {command} with result {command_result}")
 
@@ -105,16 +115,6 @@ def handle_message(update, context, simulated_message=None):
             chat_id = update.message.chat_id
             bot.send_message(chat_id=chat_id, text=response_text)
             logging.debug(f"Sent response to user {chat_id}: {response_text}")
-
-            # Send the command result as a new message
-            simulated_message = "The command output is:\n\n" + command_result
-            if command_error:
-                simulated_message += "\n\nThe command error is:\n\n" + command_error
-
-            # Truncate the message to the last 1024 tokens
-            simulated_message = truncate_text_to_tokens(simulated_message, 1024)
-
-            handle_message(update, context, simulated_message=simulated_message)
 
     except Exception as e:
         logging.error(f"An error occurred while processing the user message: {e}")
