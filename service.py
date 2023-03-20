@@ -99,9 +99,7 @@ def handle_message(update, context, simulated_message=None):
                 logging.debug(f"Executed command {command} with result {command_result}, error {command_error}")
 
                 # Send the command result as a new message
-                simulated_message = "The command output is:\n\n" + command_result
-                if command_error:
-                    simulated_message += "\n\nThe command error is:\n\n" + command_error
+                simulated_message += "\n\nThe command error is:\n\n" + command_error
 
                 # Truncate the message to the last 1024 tokens
                 simulated_message = truncate_text_to_tokens(simulated_message, 1024)
