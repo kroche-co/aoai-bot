@@ -32,19 +32,6 @@ def start(update, context):
     except Exception as e:
         logging.error(f"An error occurred while processing the /start command: {e}")
 
-# Function to process the message with OpenAI
-def process_message_with_openai(message_text):
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        max_tokens=2048,
-        messages=[
-            {"role": "system", "content": SYSTEM_MESSAGE},
-            {"role": "user", "content": message_text}
-        ],
-        temperature=0.5
-    )
-    return response
-
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
 def truncate_text_to_tokens(text, max_tokens):
@@ -54,6 +41,19 @@ def truncate_text_to_tokens(text, max_tokens):
             tokens.pop(0)
         return ' '.join(tokens[-max_tokens:])
     return text
+
+# Function to process the message with OpenAI
+def process_message_with_openai(message_text):
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        max_tokens=4096,
+        messages=[
+            {"role": "system", "content": SYSTEM_MESSAGE},
+            {"role": "user", "content": message_text}
+        ],
+        temperature=0.5
+    )
+    return response
 
 # Main function for handling user messages
 def handle_message(update, context, simulated_message=None):
@@ -77,6 +77,11 @@ def handle_message(update, context, simulated_message=None):
         response_text = response.choices[0].message.content.strip()
         logging.debug(f"Received response from OpenAI: {response_text}")
 
+        # Send the response to the user
+        chat_id = update.message.chat_id
+        bot.send_message(chat_id=chat_id, text=response_text)
+        logging.debug(f"Sent response to user {chat_id}: {response_text}")
+
         if "<!EXECUTE>" in response_text:
             # Execute a command
             command_start = response_text.find("<!EXECUTE>") + len("<!EXECUTE>")
@@ -87,27 +92,27 @@ def handle_message(update, context, simulated_message=None):
             command_result, command_error = process.communicate()
 
             response_text = response_text.replace("<!EXECUTE>", "").replace("</EXECUTE>", "").strip()
-            response_text += f"\n\nRESPONSE: {command_result}"
+            response_text += f"\n\nOUTPUT: {command_result}"
             if command_error:
                 response_text += f"\n\nERROR: {command_error}"
                 logging.debug(f"Executed command {command} with result {command_result}, error {command_error}")
             else:
                 logging.debug(f"Executed command {command} with result {command_result}")
 
+            # Send the response to the user
+            chat_id = update.message.chat_id
+            bot.send_message(chat_id=chat_id, text=response_text)
+            logging.debug(f"Sent response to user {chat_id}: {response_text}")
+
             # Send the command result as a new message
             simulated_message = "The command output is:\n\n" + command_result
             if command_error:
                 simulated_message += "\n\nThe command error is:\n\n" + command_error
 
-            # Truncate the message to the last 4096 tokens
-            simulated_message = truncate_text_to_tokens(simulated_message, 4096)
+            # Truncate the message to the last 2048 tokens
+            simulated_message = truncate_text_to_tokens(simulated_message, 2048)
 
             handle_message(update, context, simulated_message=simulated_message)
-        else:
-            # Send the response to the user
-            chat_id = update.message.chat_id
-            bot.send_message(chat_id=chat_id, text=response_text)
-            logging.debug(f"Sent response to user {chat_id}: {response_text}")
 
     except Exception as e:
         logging.error(f"An error occurred while processing the user message: {e}")
