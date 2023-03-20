@@ -76,12 +76,18 @@ def handle_message(update, context):
             command_result, command_error = process.communicate()
 
             response_text = response_text.replace("<!EXECUTE>", "").replace("</EXECUTE>", "").strip()
-            response_text += f"\n\nRESPONSE: {command_result}"
+            response_text += f"\n\nOutput:\n{command_result}"
             if command_error:
                 response_text += f"\n\nERROR: {command_error}"
                 logging.debug(f"Executed command {command} with result {command_result}, error {command_error}")
             else:
                 logging.debug(f"Executed command {command} with result {command_result}")
+
+            # Send the command output to OpenAI for further processing
+            ai_response = executor.submit(process_message_with_openai, command_result).result()
+            ai_response_text = ai_response.choices[0].message.content.strip()
+
+            response_text += f"\n\nOpenAI response based on command output: {ai_response_text}"
 
         # Send the response to the user
         chat_id = update.message.chat_id
