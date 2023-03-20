@@ -17,6 +17,9 @@ openai.api_key = OPENAI_API_KEY
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.DEBUG)
 
+# List of allowed user nicknames
+ALLOWED_USERS = ['kukaryambik']
+
 # Handler for the /start command
 def start(update, context):
     try:
@@ -28,9 +31,15 @@ def start(update, context):
 # Main function for handling user messages
 def handle_message(update, context):
     try:
+        # Check if the user is allowed to send messages
+        user_nickname = update.message.from_user.username
+        if user_nickname not in ALLOWED_USERS:
+            logging.warning(f"User {user_nickname} is not allowed to use the bot")
+            return
+
         # Get the message text from the user
         message_text = update.message.text
-        logging.debug(f"Received message from user {update.message.chat_id}: {message_text}")
+        logging.debug(f"Received message from user {user_nickname}: {message_text}")
 
         # Send a request to OpenAI
         response = openai.Completion.create(
