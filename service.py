@@ -1,5 +1,6 @@
 import os
 from telegram import ext, Bot
+from telegram.ext import CommandHandler, MessageHandler, Filters
 import openai
 
 # Устанавливаем токены и ключи из переменных окружения
@@ -11,6 +12,10 @@ bot = Bot(token=TELEGRAM_TOKEN)
 
 # Инициализируем OpenAI API
 openai.api_key = OPENAI_API_KEY
+
+# Обработчик команды /start
+def start(update, context):
+    context.bot.send_message(chat_id=update.message.chat_id, text="Привет! Я готов к работе.")
 
 # Основная функция для обработки сообщений от пользователя
 def handle_message(update, context):
@@ -44,11 +49,16 @@ def handle_message(update, context):
 # Основной цикл программы
 if __name__ == '__main__':
     # Создаем объект для работы с телеграмом
-    updater = ext.Updater(token=TELEGRAM_TOKEN, use_context=True)
+    updater = ext.Updater(token=TELEGRAM_TOKEN)
+
+    # Создаем обработчики команд
+    start_handler = CommandHandler('start', start)
+
+    # Регистрируем обработчики команд
+    updater.dispatcher.add_handler(start_handler)
 
     # Создаем обработчик сообщений
-    message_handler = ext.MessageHandler(
-        ext.Filters.text, handle_message)
+    message_handler = MessageHandler(Filters.text, handle_message)
 
     # Регистрируем обработчик сообщений
     updater.dispatcher.add_handler(message_handler)
