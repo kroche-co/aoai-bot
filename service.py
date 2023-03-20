@@ -27,7 +27,7 @@ def handle_message(update, context):
         prompt=message_text,
         max_tokens=1024,
         n=1,
-        stop="\n",
+        stop=None,
         temperature=0.7,
     )
 
