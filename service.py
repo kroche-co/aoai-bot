@@ -1,6 +1,6 @@
 import os
 from telegram import Bot
-from telegram.ext import Updater, MessageHandler, Filters
+from telegram.ext import Updater, MessageHandler, filters
 import openai
 
 # Устанавливаем токены и ключи из переменных окружения
@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
     # Создаем обработчик сообщений
     message_handler = MessageHandler(
-        Filters.text, handle_message)
+        filters.text, handle_message)
 
     # Регистрируем обработчик сообщений
     updater_instance.dispatcher.add_handler(message_handler)
