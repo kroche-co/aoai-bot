@@ -56,9 +56,8 @@ def handle_message(update, context):
         message_text = update.message.text
         logging.debug(f"Received message from user {user_nickname}: {message_text}")
 
-        # Create a ThreadPoolExecutor and process the message with OpenAI
-        with ThreadPoolExecutor() as executor:
-            response = executor.submit(process_message_with_openai, message_text).result()
+        # Use global ThreadPoolExecutor to process the message with OpenAI
+        response = executor.submit(process_message_with_openai, message_text).result()
 
         logging.debug(f"Request sent to OpenAI for processing")
 
@@ -109,6 +108,9 @@ if __name__ == '__main__':
 
         # Register message handler
         updater.dispatcher.add_handler(message_handler)
+
+        # Create global ThreadPoolExecutor
+        executor = ThreadPoolExecutor()
 
         # Start the bot
         updater.start_polling()
