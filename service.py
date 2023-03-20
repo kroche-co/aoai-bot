@@ -91,9 +91,10 @@ def handle_message(update, context, simulated_message=None):
 
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
             command_result, command_error = process.communicate()
+            command_output = command_result.decode() + command_error.decode()
 
             response_text = response_text.replace("<!EXECUTE>", "").replace("</EXECUTE>", "").strip()
-            response_text += f"\n\nOUTPUT: {command_result}"
+            response_text += f"\n\nOUTPUT: {command_output}"
             if command_error:
                 response_text += f"\n\nERROR: {command_error}"
                 logging.debug(f"Executed command {command} with result {command_result}, error {command_error}")
