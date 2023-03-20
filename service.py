@@ -30,6 +30,19 @@ def start(update, context):
     except Exception as e:
         logging.error(f"An error occurred while processing the /start command: {e}")
 
+# Function to process the message with OpenAI
+def process_message_with_openai(message_text):
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        max_tokens=2048,
+        messages=[
+            {"role": "system", "content": "The requests to execute a command or other instructions, imply the need to provide a working example of a command to be executed in a Debian environment with root privileges and to use the tags <!EXECUTE> and </EXECUTE> to denote the command."},
+            {"role": "user", "content": message_text}
+        ],
+        temperature=0.5
+    )
+    return response
+
 # Main function for handling user messages
 def handle_message(update, context):
     try:
