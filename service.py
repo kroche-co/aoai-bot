@@ -22,9 +22,6 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 # List of allowed user nicknames
 ALLOWED_USERS = ['kukaryambik']
 
-# Create global ThreadPoolExecutor
-executor = ThreadPoolExecutor()
-
 # Handler for the /start command
 def start(update, context):
     try:
@@ -59,8 +56,9 @@ def handle_message(update, context):
         message_text = update.message.text
         logging.debug(f"Received message from user {user_nickname}: {message_text}")
 
-        # Use global ThreadPoolExecutor to process the message with OpenAI
-        response = executor.submit(process_message_with_openai, message_text).result()
+        # Create a ThreadPoolExecutor and process the message with OpenAI
+        with ThreadPoolExecutor() as executor:
+            response = executor.submit(process_message_with_openai, message_text).result()
 
         logging.debug(f"Request sent to OpenAI for processing")
 
