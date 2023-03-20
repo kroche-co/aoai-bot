@@ -24,7 +24,7 @@ def handle_message(update, context):
 
     # Отправляем запрос в OpenAI
     response = openai.Completion.create(
-        engine="davinci-codex",
+        engine="text-davinci-002",
         prompt=message_text,
         max_tokens=1024,
         n=1,
@@ -49,7 +49,7 @@ def handle_message(update, context):
 # Основной цикл программы
 if __name__ == '__main__':
     # Создаем объект для работы с телеграмом
-    updater = ext.Updater(token=TELEGRAM_TOKEN)
+    updater = ext.Updater(token=TELEGRAM_TOKEN, use_context=True)
 
     # Создаем обработчики команд
     start_handler = CommandHandler('start', start)
