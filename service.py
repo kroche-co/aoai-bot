@@ -1,7 +1,9 @@
 import os
 import logging
+import subprocess
 from telegram import ext, Bot
 import openai
+from concurrent.futures import ThreadPoolExecutor
 
 # Set tokens and keys from environment variables
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -41,15 +43,10 @@ def handle_message(update, context):
         message_text = update.message.text
         logging.debug(f"Received message from user {user_nickname}: {message_text}")
 
-        # Send a request to OpenAI
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            max_tokens=2048,
-            messages=[
-                {"role": "user", "content": message_text}
-            ],
-            temperature=0.5
-        )
+        # Use ThreadPoolExecutor to process the message with OpenAI
+        with ThreadPoolExecutor() as executor:
+            response = executor.submit(process_message_with_openai, message_text).result()
+
         logging.debug(f"Request sent to OpenAI for processing")
 
         # Get the response from OpenAI
@@ -61,10 +58,17 @@ def handle_message(update, context):
             command_start = response_text.find("<!EXECUTE>") + len("<!EXECUTE>")
             command_end = response_text.find("</EXECUTE>")
             command = response_text[command_start:command_end].strip()
-            command_result = os.popen(command).read()
+
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
+            command_result, command_error = process.communicate()
+
             response_text = response_text.replace("<!EXECUTE>", "").replace("</EXECUTE>", "").strip()
-            response_text = f"{response_text}\n\nRESPONSE: {command_result}"
-            logging.debug(f"Executed command {command} with result {command_result}")
+            response_text += f"\n\nRESPONSE: {command_result}"
+            if command_error:
+                response_text += f"\n\nERROR: {command_error}"
+                logging.debug(f"Executed command {command} with result {command_result}, error {command_error}")
+            else:
+                logging.debug(f"Executed command {command} with result {command_result}")
 
         # Send the response to the user
         chat_id = update.message.chat_id
