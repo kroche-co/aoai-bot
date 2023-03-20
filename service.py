@@ -45,6 +45,7 @@ def truncate_text_to_tokens(text, max_tokens):
 
 # Function to process the message with OpenAI
 def process_message_with_openai(message_text):
+    logging.debug(f"Trying to send message: {message_text}")
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         max_tokens=2048,
