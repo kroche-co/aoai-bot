@@ -47,7 +47,7 @@ def truncate_text_to_tokens(text, max_tokens):
 def process_message_with_openai(message_text):
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
-        max_tokens=4096,
+        max_tokens=2048,
         messages=[
             {"role": "system", "content": translit(SYSTEM_MESSAGE, 'ru', reversed=True)},
             {"role": "user", "content": message_text}
@@ -110,8 +110,8 @@ def handle_message(update, context, simulated_message=None):
             if command_error:
                 simulated_message += "\n\nThe command error is:\n\n" + command_error
 
-            # Truncate the message to the last 2048 tokens
-            simulated_message = truncate_text_to_tokens(simulated_message, 2048)
+            # Truncate the message to the last 1024 tokens
+            simulated_message = truncate_text_to_tokens(simulated_message, 1024)
 
             handle_message(update, context, simulated_message=simulated_message)
 
