@@ -5,7 +5,7 @@ import openai
 from transformers import pipeline, GPT2Tokenizer
 from concurrent.futures import ThreadPoolExecutor
 from telegram import ext, Bot
-from transliterate import translit
+# from transliterate import translit
 
 # Set tokens and keys from environment variables
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -50,7 +50,7 @@ def process_message_with_openai(message_text):
         model="gpt-3.5-turbo",
         max_tokens=2048,
         messages=[
-            {"role": "system", "content": translit(SYSTEM_MESSAGE, 'ru', reversed=True)},
+            {"role": "system", "content": SYSTEM_MESSAGE},
             {"role": "user", "content": message_text}
         ],
         temperature=0.5
@@ -67,7 +67,7 @@ def handle_message(update, context, simulated_message=None):
             return
 
         # Get the message text from the user or the simulated message
-        message_text = simulated_message if simulated_message else translit(update.message.text, 'ru', reversed=True)
+        message_text = simulated_message if simulated_message else update.message.text
         logging.debug(f"Received message: {message_text}")
 
         # Use global ThreadPoolExecutor to process the message with OpenAI
