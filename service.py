@@ -1,3 +1,4 @@
+import json
 import os
 import logging
 import subprocess
@@ -8,7 +9,7 @@ from telegram import ext, Bot
 # Set tokens and keys from environment variables
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-# SYSTEM_MESSAGE = os.getenv('SYSTEM_MESSAGE')
+MONGO_DB_URL = os.getenv('MONGO_DB_URL')
 
 # Initialize Telegram bot
 bot = Bot(token=TELEGRAM_TOKEN)
@@ -16,12 +17,18 @@ bot = Bot(token=TELEGRAM_TOKEN)
 # Initialize OpenAI API
 openai.api_key = OPENAI_API_KEY
 
+# Initialize mongoDB
+client = MongoClient(MONGO_DB_URL)
+db = client['telegram_bot_db']
+context_collection = db['context_collection']
+
 # Set logging level to DEBUG
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.DEBUG)
 
 # List of allowed user nicknames
 ALLOWED_USERS = ['kukaryambik']
+
 
 # Handler for the /start command
 def start(update, context):
@@ -33,95 +40,93 @@ def start(update, context):
 
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
-def truncate_text_to_tokens(text, max_tokens):
-    if len(tokenizer.encode(text)) > max_tokens:
-        tokens = tokenizer.tokenize(text)
-        while len(tokenizer.encode(' '.join(tokens[-max_tokens:]))) > max_tokens:
-            tokens.pop(0)
-        return ' '.join(tokens[-max_tokens:])
-    return text
+
+def truncate_msgs_to_tokens(messages, token_limit):
+    for message in messages:
+        tokenized_message = tokenizer(message["content"], return_tensors="pt")
+        message_tokens = tokenized_message["input_ids"].shape[1]
+        if message_tokens > token_limit:
+            raise ValueError(f"The message '{message['content']}' contains {message_tokens} tokens, which exceeds the limit ({token_limit}).")
+
+    tokenized_messages = tokenizer(messages, return_tensors="pt")
+    total_tokens = tokenized_messages["input_ids"].shape[1]
+
+    while total_tokens > token_limit:
+        messages.pop(0)
+        tokenized_messages = tokenizer(messages, return_tensors="pt")
+        total_tokens = tokenized_messages["input_ids"].shape[1]
+
+    return messages
+
 
 # Function to process the message with OpenAI
-def process_message_with_openai(message_text):
-    logging.debug(f"Trying to send message: {message_text}")
+def process_message_with_openai(msgs, token_limit=2048, response_token_limit=1024):
+    logging.debug(f"Trying to send messages to ChatGPT.")
+
+    try:
+        truncated_msgs = truncate_msgs_to_tokens(msgs, token_limit)
+    except ValueError as e:
+        logging.error(e)
+        return f"Error: {e}"
+
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
-        max_tokens=2048,
-        messages=[
-            # {"role": "system", "content": SYSTEM_MESSAGE},
-            {"role": "user", "content": message_text}
-        ],
+        max_tokens=response_token_limit,
+        messages=truncated_msgs,
         temperature=0.66,
         presence_penalty=0.66,
         frequency_penalty=0.66
     )
     return response
 
+
 # Main function for handling user messages
-def handle_message(update, context, simulated_message=None):
+def handle_message(update, context):
     try:
         # Check if the user is allowed to send messages
-        user_nickname = update.message.from_user.username if not simulated_message else None
+        user_nickname = update.message.from_user.username
         if user_nickname and user_nickname not in ALLOWED_USERS:
             logging.warning(f"User {user_nickname} is not allowed to use the bot")
             return
 
-        # Get the message text from the user or the simulated message
-        message_text = simulated_message if simulated_message else update.message.text
-        logging.debug(f"Received message: {message_text}")
+        message_text = update.message.text
+
+        # Get current user context from the database
+        chat_id = update.message.chat_id
+        context_data = context_collection.find_one({'chat_id': chat_id})
+
+        # Prepare messages for OpenAI with current user context
+        messages = []
+        if context_data:
+            messages.append({"role": "user", "content": context_data['context']})
+        messages.append({"role": "user", "content": message_text})
 
         # Process the message with OpenAI
-        response = process_message_with_openai(message_text)
-
+        response = process_message_with_openai(messages)
         logging.debug(f"Request sent to OpenAI for processing")
 
         # Get the response from OpenAI
         response_text = response.choices[0].message.content.strip()
-        logging.debug(f"Received response from OpenAI: {response_text}")
+        if response_text:
+            # Save current user context to the database
+            context_collection.update_one({'chat_id': chat_id}, {'$set': {'context': json.dumps([messages[-1], {"role": "ai_assistance", "content": response_text}])}}, upsert=True)
 
-        # Send the response to the user
-        chat_id = update.message.chat_id
-        bot.send_message(chat_id=chat_id, text=response_text)
-        logging.debug(f"Sent response to user {chat_id}: {response_text}")
-
-        # if "<!EXECUTE>" in response_text:
-        #     # Execute a command
-        #     command_start = response_text.find("<!EXECUTE>") + len("<!EXECUTE>")
-        #     command_end = response_text.find("</EXECUTE>")
-        #     command = response_text[command_start:command_end].strip()
-
-        #     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
-        #     command_result, command_error = process.communicate()
-        #     command_output = command_result + command_error
-
-        #     response_text = response_text.replace("<!EXECUTE>", "").replace("</EXECUTE>", "").strip()
-        #     response_text += f"\n\nOUTPUT: {command_output}"
-        #     if command_error:
-        #         response_text += f"\n\nERROR: {command_error}"
-        #         logging.debug(f"Executed command {command} with result {command_result}, error {command_error}")
-
-        #         # Initialize the simulated message if it is None
-        #         if not simulated_message:
-        #             simulated_message = ""
-
-        #         # Append the command error to the simulated message
-        #         simulated_message += "\n\nThe command error is:\n\n" + command_error
-
-        #         # Truncate the message to the last 1024 tokens
-        #         simulated_message = truncate_text_to_tokens(simulated_message, 1024)
-
-        #         handle_message(update, context, simulated_message=simulated_message)
-
-        #     else:
-        #         logging.debug(f"Executed command {command} with result {command_result}")
-
-        #     # Send the response to the user
-        #     chat_id = update.message.chat_id
-        #     bot.send_message(chat_id=chat_id, text=response_text)
-        #     logging.debug(f"Sent response to user {chat_id}: {response_text}")
+            # Send the response to the user
+            chat_id = update.message.chat_id
+            bot.send_message(chat_id=chat_id, text=response_text)
+            logging.debug(f"Sent response to user {chat_id}: {response_text}")
+        else:
+            logging.debug(f"Received empty response from OpenAI")
 
     except Exception as e:
         logging.error(f"An error occurred while processing the user message: {e}")
+        try:
+            # Try to reconnect and send the message again
+            bot = Bot(token=TELEGRAM_TOKEN)
+            bot.send_message(chat_id=chat_id, text="Sorry, something went wrong while processing your request. Please try again.")
+            logging.debug(f"Sent error message to user {chat_id}")
+        except Exception as e:
+            logging.error(f"An error occurred while trying to reconnect to Telegram bot: {e}")
 
 # Main program loop
 if __name__ == '__main__':
