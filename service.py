@@ -6,6 +6,7 @@ import openai
 from transformers import GPT2Tokenizer
 from telegram import ext, Bot
 from pymongo import MongoClient
+from cachetools import TTLCache
 
 # Set tokens and keys from environment variables
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -21,7 +22,9 @@ openai.api_key = OPENAI_API_KEY
 # Initialize mongoDB
 client = MongoClient(MONGO_DB_URL)
 db = client['telegram_bot_db']
-context_collection = db['context_collection']
+
+# Create a cache with a maximum size of 100 and a time-to-live of 5 minutes
+cache = TTLCache(maxsize=100, ttl=300)
 
 # Set logging level to DEBUG
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -92,9 +95,15 @@ def handle_message(update, context):
 
         message_text = update.message.text
 
-        # Get current user context from the database
+        # Get current user context from the cache or the database
         chat_id = update.message.chat_id
-        context_data = context_collection.find_one({'chat_id': chat_id})
+        context_data = cache.get(chat_id)
+
+        if not context_data:
+            context_data = context_collection.find_one({'chat_id': chat_id})
+            if context_data:
+                # Cache the context for future requests
+                cache[chat_id] = context_data
 
         # Prepare messages for OpenAI with current user context
         messages = []
@@ -109,8 +118,9 @@ def handle_message(update, context):
         # Get the response from OpenAI
         response_text = response.choices[0].message.content.strip()
         if response_text:
-            # Save current user context to the database
+            # Save current user context to the database and the cache
             context_collection.update_one({'chat_id': chat_id}, {'$set': {'context': json.dumps([messages[-1], {"role": "ai_assistance", "content": response_text}])}}, upsert=True)
+            cache[chat_id] = {'context': json.dumps([messages[-1], {"role": "ai_assistance", "content": response_text}]), 'chat_id': chat_id}
 
             # Send the response to the user
             chat_id = update.message.chat_id
