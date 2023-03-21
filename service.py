@@ -6,6 +6,7 @@ import openai
 from transformers import GPT2Tokenizer
 from telegram import ext, Bot
 from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
 
 # Set tokens and keys from environment variables
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -20,6 +21,12 @@ openai.api_key = OPENAI_API_KEY
 
 # Initialize mongoDB
 client = MongoClient(MONGO_DB_URL)
+try:
+   # The ismaster command is cheap and does not require auth.
+   client.admin.command('ismaster')
+except ConnectionFailure:
+   logging.error(f"Server not available")
+
 db = client.telegram_bot_db
 conversations = db.conversations
 
