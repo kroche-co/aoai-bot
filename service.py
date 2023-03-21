@@ -6,7 +6,6 @@ import openai
 from transformers import GPT2Tokenizer
 from telegram import ext, Bot
 from pymongo import MongoClient
-from cachetools import TTLCache
 
 # Set tokens and keys from environment variables
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -21,18 +20,12 @@ openai.api_key = OPENAI_API_KEY
 
 # Initialize mongoDB
 client = MongoClient(MONGO_DB_URL)
-db = client['telegram_bot_db']
-
-# Create a cache with a maximum size of 100 and a time-to-live of 5 minutes
-cache = TTLCache(maxsize=100, ttl=300)
+db = client.telegram_bot_db
+conversations = db.conversations
 
 # Set logging level to DEBUG
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.DEBUG)
-
-# List of allowed user nicknames
-ALLOWED_USERS = ['kukaryambik']
-
 
 # Handler for the /start command
 def start(update, context):
@@ -84,31 +77,25 @@ def process_message_with_openai(msgs, token_limit=2048, response_token_limit=102
     return response
 
 
+def save_messages(chat_id, messages):
+    conversations.replace_one({"chat_id": chat_id}, {"chat_id": chat_id, "messages": messages}, upsert=True)
+
+
+def load_messages(chat_id):
+    conversation = conversations.find_one({"chat_id": chat_id})
+    if conversation:
+        return conversation["messages"]
+    else:
+        return []
+
+
 # Main function for handling user messages
 def handle_message(update, context):
     try:
-        # Check if the user is allowed to send messages
-        user_nickname = update.message.from_user.username
-        if user_nickname and user_nickname not in ALLOWED_USERS:
-            logging.warning(f"User {user_nickname} is not allowed to use the bot")
-            return
-
         message_text = update.message.text
-
-        # Get current user context from the cache or the database
         chat_id = update.message.chat_id
-        context_data = cache.get(chat_id)
 
-        if not context_data:
-            context_data = context_collection.find_one({'chat_id': chat_id})
-            if context_data:
-                # Cache the context for future requests
-                cache[chat_id] = context_data
-
-        # Prepare messages for OpenAI with current user context
-        messages = []
-        if context_data:
-            messages.append({"role": "user", "content": context_data['context']})
+        messages = load_messages(chat_id)
         messages.append({"role": "user", "content": message_text})
 
         # Process the message with OpenAI
@@ -118,12 +105,12 @@ def handle_message(update, context):
         # Get the response from OpenAI
         response_text = response.choices[0].message.content.strip()
         if response_text:
-            # Save current user context to the database and the cache
-            context_collection.update_one({'chat_id': chat_id}, {'$set': {'context': json.dumps([messages[-1], {"role": "ai_assistance", "content": response_text}])}}, upsert=True)
-            cache[chat_id] = {'context': json.dumps([messages[-1], {"role": "ai_assistance", "content": response_text}]), 'chat_id': chat_id}
+
+            # Save the conversation with the new response
+            messages.append({"role": "assistant", "content": response_text})
+            save_messages(chat_id, messages)
 
             # Send the response to the user
-            chat_id = update.message.chat_id
             bot.send_message(chat_id=chat_id, text=response_text)
             logging.debug(f"Sent response to user {chat_id}: {response_text}")
         else:
