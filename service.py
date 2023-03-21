@@ -5,6 +5,7 @@ import subprocess
 import openai
 from transformers import GPT2Tokenizer
 from telegram import ext, Bot
+from pymongo import MongoClient
 
 # Set tokens and keys from environment variables
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -128,6 +129,7 @@ def handle_message(update, context):
         except Exception as e:
             logging.error(f"An error occurred while trying to reconnect to Telegram bot: {e}")
 
+
 # Main program loop
 if __name__ == '__main__':
     try:
@@ -156,3 +158,6 @@ if __name__ == '__main__':
 
     except Exception as e:
         logging.error(f"An error occurred while running the Telegram bot: {e}")
+    finally:
+        # Close MongoDB connection
+        client.close()
