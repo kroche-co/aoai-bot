@@ -99,13 +99,16 @@ def load_messages(chat_id):
     if chat_id in cache:
         return cache[chat_id]
 
+    # Delete all messages except the last 100
+    conversations.delete_many({"chat_id": chat_id}, {"_id": {"$ne": conversations.find({"chat_id": chat_id}).sort("_id", -1).limit(100)[99]["_id"]}})
+
     messages = list(conversations.find({"chat_id": chat_id}))
     if messages:
         result = [message["message"] for message in messages]
     else:
         result = []
 
-    # Сохранить результат в кеше
+    # Save result in cache
     cache[chat_id] = result
     return result
 
