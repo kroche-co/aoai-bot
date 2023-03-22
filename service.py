@@ -60,19 +60,15 @@ tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
 
 def truncate_msgs_to_tokens(messages, token_limit):
-    for message in messages:
-        tokenized_message = tokenizer.encode(message["content"])
-        message_tokens = len(tokenized_message)
-        if message_tokens > token_limit:
-            raise ValueError(f"The message '{message['content']}' contains {message_tokens} tokens, which exceeds the limit ({token_limit}).")
 
-    tokenized_messages = tokenizer.encode([message["content"] for message in messages])
-    total_tokens = len(tokenized_messages)
+    message_tokens = len(tokenizer.encode(messages[-1]))
+    if message_tokens > token_limit:
+        raise ValueError(f"The message '{message['content']}' contains {message_tokens} tokens, which exceeds the limit ({token_limit}).")
 
+    total_tokens = len(tokenizer.encode(messages))
     while total_tokens > token_limit:
         messages.pop(0)
-        tokenized_messages = tokenizer.encode([message["content"] for message in messages])
-        total_tokens = len(tokenized_messages)
+        total_tokens = len(tokenizer.encode(messages))
 
     return messages
 
