@@ -11,14 +11,15 @@ from cachetools import TTLCache
 
 
 # Set tokens and keys from environment variables
-TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-MONGO_DB_URL = os.getenv('MONGO_DB_URL')
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+MONGO_DB_URL = os.getenv("MONGO_DB_URL")
 
 
 # Set logging level to DEBUG
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.DEBUG)
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.DEBUG
+)
 
 
 # Initialize Telegram bot
@@ -32,10 +33,10 @@ openai.api_key = OPENAI_API_KEY
 # Initialize mongoDB
 client = MongoClient(MONGO_DB_URL)
 try:
-   # The ismaster command is cheap and does not require auth.
-   client.admin.command('ismaster')
+    # The ismaster command is cheap and does not require auth.
+    client.admin.command("ismaster")
 except ConnectionFailure:
-   logging.error(f"Server not available")
+    logging.error(f"Server not available")
 
 db = client["telegram_bot_db"]
 conversations = db["conversations"]
@@ -51,10 +52,13 @@ cache = TTLCache(maxsize=1024, ttl=1200)
 # Handler for the /start command
 def start(update, context):
     try:
-        context.bot.send_message(chat_id=update.message.chat_id, text="Hello! I'm ready to work.")
+        context.bot.send_message(
+            chat_id=update.message.chat_id, text="Hello! I'm ready to work."
+        )
         logging.info(f"User {update.message.chat_id} started the bot")
     except Exception as e:
         logging.error(f"An error occurred while processing the /start command: {e}")
+
 
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
@@ -64,7 +68,9 @@ def truncate_msgs_to_tokens(messages, token_limit):
 
     message_tokens = len(tokenizer.encode(messages[-1]))
     if message_tokens > token_limit:
-        raise ValueError(f"The message '{message['content']}' contains {message_tokens} tokens, which exceeds the limit ({token_limit}).")
+        raise ValueError(
+            f"The message '{message['content']}' contains {message_tokens} tokens, which exceeds the limit ({token_limit})."
+        )
 
     total_tokens = len(tokenizer.encode(messages))
     while total_tokens > token_limit:
@@ -75,7 +81,9 @@ def truncate_msgs_to_tokens(messages, token_limit):
 
 
 # Function to process the message with OpenAI
-def process_message_with_openai(msgs, token_limit=2048, response_token_limit=1024):
+def process_message_with_openai(
+    msgs, token_limit=2048, response_token_limit=1024
+):
     logging.debug(f"Trying to send messages to ChatGPT.")
 
     try:
@@ -90,26 +98,33 @@ def process_message_with_openai(msgs, token_limit=2048, response_token_limit=102
         messages=truncated_msgs,
         temperature=0.66,
         presence_penalty=0.66,
-        frequency_penalty=0.66
+        frequency_penalty=0.66,
     )
     return response
 
 
 # Load messages
 def load_messages(chat_id):
+    # If chat ID is present in the cache, return messages from the cache
     if chat_id in cache:
         return cache[chat_id]
 
-    # Delete all messages except the last 100
-    conversations.delete_many({"chat_id": chat_id}, {"_id": {"$ne": conversations.find({"chat_id": chat_id}).sort("_id", -1).limit(100)[99]["_id"]}})
+    # Otherwise, retrieve messages from the database
+    # Sort them by the "_id" field in descending order (from newest to oldest) and limit the number to 100
+    messages = list(conversations.find({"chat_id": chat_id}).sort("_id", -1).limit(100))
 
-    messages = list(conversations.find({"chat_id": chat_id}))
-    if messages:
-        result = [message["message"] for message in messages]
-    else:
-        result = []
+    # Get the _id of the oldest message among the last 100
+    oldest_message_id = messages[-1]["_id"] if len(messages) > 0 else None
 
-    # Save result in cache
+    if oldest_message_id:
+        # Delete all messages that are older than the oldest message among the last 100 messages for this chat
+        conversations.delete_many({"chat_id": chat_id, "_id": {"$lt": oldest_message_id}})
+        logging.debug(f"Deleted old messages for chat {chat_id}")
+
+    # If messages are found, extract their content, otherwise return an empty list
+    result = [message["message"] for message in messages] if len(messages) > 0 else []
+
+    # Save the result in the cache with the chat_id as the key
     cache[chat_id] = result
     return result
 
