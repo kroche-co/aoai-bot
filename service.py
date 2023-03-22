@@ -60,6 +60,7 @@ tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
 
 def truncate_msgs_to_tokens(messages, token_limit):
+    logging.debug(f"Truncuate messages.")
 
     message_tokens = len(tokenizer.encode(messages[-1]))
     if message_tokens > token_limit:
@@ -137,7 +138,7 @@ def handle_message(update, context):
         chat_id = update.message.chat_id
 
         messages = load_messages(chat_id)
-        messages.append({"role": "user", "content": f"{message_text}"})
+        messages.append({"role": "user", "content": message_text})
 
         # Process the message with OpenAI
         response = process_message_with_openai(messages)
