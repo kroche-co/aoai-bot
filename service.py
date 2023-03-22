@@ -10,6 +10,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from cachetools import TTLCache
 
 # Set tokens and keys from environment variables
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MONGO_DB_URL = os.getenv("MONGO_DB_URL")
@@ -87,7 +88,10 @@ async def process_message_with_openai(
         logging.error(e)
         return f"Error: {e}"
 
-    response = await openai.ChatCompletion.create(
+    loop = asyncio.get_event_loop()
+    response = await loop.run_in_executor(
+        None,
+        openai.ChatCompletion.create,
         model="gpt-3.5-turbo",
         max_tokens=response_token_limit,
         messages=truncated_msgs,
