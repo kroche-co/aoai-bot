@@ -171,7 +171,7 @@ async def handle_message(message: types.Message):
         except Exception as e:
             logging.error(f"An error occurred while trying to reconnect to Telegram bot: {e}")
 
-dp.register_message_handler(handle_message, content_types=types.ContentTypes=['text'])
+dp.register_message_handler(handle_message, content_types=types.ContentTypes('text'))
 
 # Main program loop
 if __name__ == '__main__':
