@@ -134,11 +134,11 @@ def save_messages(chat_id, messages):
 # Main function for handling user messages
 def handle_message(update, context):
     try:
-        message_text = update.message.text.encode('utf-8')
+        message_text = update.message.text
         chat_id = update.message.chat_id
 
         messages = load_messages(chat_id)
-        messages.append({"role": "user", "content": message_text})
+        messages.append({"role": "user", "content": f"{message_text}"})
 
         # Process the message with OpenAI
         response = process_message_with_openai(messages)
