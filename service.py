@@ -3,7 +3,7 @@ import json
 import os
 import logging
 import openai
-from transformers import GPT2Tokenizer
+from transformers import GPT2TokenizerFast
 from telegram import ext, Bot
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
@@ -60,10 +60,10 @@ def start(update, context):
         logging.error(f"An error occurred while processing the /start command: {e}")
 
 
-tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
 def truncate_msgs_to_tokens(messages, token_limit):
-    logging.debug(f"Truncuate messages.")
+    logging.debug("Truncuate messages.")
 
     tokenized_msg = tokenizer.encode(json.dumps(messages[-1]))
     message_tokens = len(tokenized_msg)
