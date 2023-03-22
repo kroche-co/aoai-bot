@@ -114,7 +114,7 @@ def load_messages(chat_id):
 
     # Otherwise, retrieve messages from the database
     # Sort them by the "_id" field in descending order (from newest to oldest) and limit the number to 100
-    messages = list(conversations.find({"chat_id": chat_id}).sort("_id", -1).limit(100))
+    messages = list(conversations.find({"chat_id": chat_id}).sort("_id", -1).limit(300))
 
     # Get the _id of the oldest message among the last 100
     oldest_message_id = messages[-1]["_id"] if len(messages) > 0 else None
