@@ -63,13 +63,13 @@ def start(update, context):
 tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
 def truncate_msgs_to_tokens(messages, token_limit):
-    logging.debug("Truncuate messages.")
+    logging.debug("Truncuate messages")
 
     tokenized_msg = tokenizer.encode(json.dumps(messages[-1]))
     message_tokens = len(tokenized_msg)
     if message_tokens > token_limit:
         raise ValueError(
-            f"The message '{messages[-1]['content']}' contains {message_tokens} tokens, which exceeds the limit ({token_limit})."
+            f"The message '{messages[-1]['content']}' contains {message_tokens} tokens, which exceeds the limit ({token_limit})"
         )
 
     tokenized_msgs = tokenizer.encode(json.dumps(messages))
@@ -84,9 +84,9 @@ def truncate_msgs_to_tokens(messages, token_limit):
 
 # Function to process the message with OpenAI
 def process_message_with_openai(
-    msgs, token_limit=2048, response_token_limit=1024
+    msgs, token_limit=2560, response_token_limit=1536
 ):
-    logging.debug(f"Trying to send messages to ChatGPT.")
+    logging.debug(f"Trying to send messages to ChatGPT")
 
     # msgs.insert(-2, {"role": "system", "content": ""})
 
@@ -176,7 +176,7 @@ def handle_message(update, context):
 
             # Send the response to the user
             bot.send_message(chat_id=chat_id, text=response_text)
-            logging.debug(f"Sent response to user {chat_id}: {response_text}")
+            logging.debug(f"Sent response to user {chat_id}")
         else:
             logging.debug(f"Received empty response from OpenAI")
 
