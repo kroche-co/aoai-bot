@@ -88,7 +88,7 @@ def process_message_with_openai(
 ):
     logging.debug(f"Trying to send messages to ChatGPT.")
 
-    msgs.insert(-2, {"role": "system", "content": "Answer in English."})
+    # msgs.insert(-2, {"role": "system", "content": ""})
 
     try:
         truncated_msgs = truncate_msgs_to_tokens(msgs, token_limit)
