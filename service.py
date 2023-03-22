@@ -88,10 +88,7 @@ async def process_message_with_openai(
         logging.error(e)
         return f"Error: {e}"
 
-    loop = asyncio.get_event_loop()
-    response = await loop.run_in_executor(
-        None,
-        openai.ChatCompletion.create,
+    response = await openai.ChatCompletion.acreate(
         model="gpt-3.5-turbo",
         max_tokens=response_token_limit,
         messages=truncated_msgs,
