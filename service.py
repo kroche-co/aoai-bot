@@ -1,23 +1,33 @@
+import time
 import json
 import os
 import logging
-import subprocess
 import openai
 from transformers import GPT2Tokenizer
 from telegram import ext, Bot
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
+from cachetools import TTLCache
+
 
 # Set tokens and keys from environment variables
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 MONGO_DB_URL = os.getenv('MONGO_DB_URL')
 
+
+# Set logging level to DEBUG
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.DEBUG)
+
+
 # Initialize Telegram bot
 bot = Bot(token=TELEGRAM_TOKEN)
 
+
 # Initialize OpenAI API
 openai.api_key = OPENAI_API_KEY
+
 
 # Initialize mongoDB
 client = MongoClient(MONGO_DB_URL)
@@ -27,12 +37,15 @@ try:
 except ConnectionFailure:
    logging.error(f"Server not available")
 
-db = client.telegram_bot_db
-conversations = db.conversations
+db = client["telegram_bot_db"]
+conversations = db["conversations"]
 
-# Set logging level to DEBUG
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.DEBUG)
+# Create an index for chat_id if it does not already exist
+conversations.create_index("chat_id")
+
+
+# Create a cache with a lifetime of 1 hour
+cache = TTLCache(maxsize=1024, ttl=1200)
 
 # Handler for the /start command
 def start(update, context):
@@ -47,18 +60,18 @@ tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 
 def truncate_msgs_to_tokens(messages, token_limit):
     for message in messages:
-        tokenized_message = tokenizer(message["content"], return_tensors="pt")
-        message_tokens = tokenized_message["input_ids"].shape[1]
+        tokenized_message = tokenizer.encode(message["content"])
+        message_tokens = len(tokenized_message)
         if message_tokens > token_limit:
             raise ValueError(f"The message '{message['content']}' contains {message_tokens} tokens, which exceeds the limit ({token_limit}).")
 
-    tokenized_messages = tokenizer(messages, return_tensors="pt")
-    total_tokens = tokenized_messages["input_ids"].shape[1]
+    tokenized_messages = tokenizer.encode([message["content"] for message in messages])
+    total_tokens = len(tokenized_messages)
 
     while total_tokens > token_limit:
         messages.pop(0)
-        tokenized_messages = tokenizer(messages, return_tensors="pt")
-        total_tokens = tokenized_messages["input_ids"].shape[1]
+        tokenized_messages = tokenizer.encode([message["content"] for message in messages])
+        total_tokens = len(tokenized_messages)
 
     return messages
 
@@ -84,16 +97,37 @@ def process_message_with_openai(msgs, token_limit=2048, response_token_limit=102
     return response
 
 
-def save_messages(chat_id, messages):
-    conversations.replace_one({"chat_id": chat_id}, {"chat_id": chat_id, "messages": messages}, upsert=True)
-
-
+# Load messages
 def load_messages(chat_id):
-    conversation = conversations.find_one({"chat_id": chat_id})
-    if conversation:
-        return conversation["messages"]
+    if chat_id in cache:
+        return cache[chat_id]
+
+    messages = list(conversations.find({"chat_id": chat_id}))
+    if messages:
+        result = [message["message"] for message in messages]
     else:
-        return []
+        result = []
+
+    # Сохранить результат в кеше
+    cache[chat_id] = result
+    return result
+
+
+# Add message into db and update cache
+def save_messages(chat_id, messages):
+    for message in messages:
+        conversations.update_one(
+            {"chat_id": chat_id, "message": message},
+            {"$set": {"chat_id": chat_id, "message": message, "tags": message.get("tags", None)}},
+            upsert=True,
+        )
+
+    # Если чат уже находится в кеше, обновите его
+    if chat_id in cache:
+        cached_messages = cache[chat_id]
+        for message in messages:
+            if message not in cached_messages:
+                cached_messages.append(message)
 
 
 # Main function for handling user messages
@@ -112,10 +146,9 @@ def handle_message(update, context):
         # Get the response from OpenAI
         response_text = response.choices[0].message.content.strip()
         if response_text:
-
             # Save the conversation with the new response
             messages.append({"role": "assistant", "content": response_text})
-            save_messages(chat_id, messages)
+            save_messages(chat_id, messages[-2:])
 
             # Send the response to the user
             bot.send_message(chat_id=chat_id, text=response_text)
