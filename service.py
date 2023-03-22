@@ -8,6 +8,7 @@ from telegram import ext, Bot
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from cachetools import TTLCache
+from transliterate import translit
 
 
 # Set tokens and keys from environment variables
@@ -65,10 +66,11 @@ tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 def truncate_msgs_to_tokens(messages, token_limit):
     logging.debug(f"Truncuate messages.")
 
-    message_tokens = len(tokenizer.encode(messages[-1]))
+    tokenized_msg = tokenizer.encode(json.dumps(messages[-1]))
+    message_tokens = len(tokenized_msg)
     if message_tokens > token_limit:
         raise ValueError(
-            f"The message '{message['content']}' contains {message_tokens} tokens, which exceeds the limit ({token_limit})."
+            f"The message '{messages[-1]['content']}' contains {message_tokens} tokens, which exceeds the limit ({token_limit})."
         )
 
     tokenized_msgs = tokenizer.encode(json.dumps(messages))
@@ -154,7 +156,9 @@ def handle_message(update, context):
         chat_id = update.message.chat_id
 
         messages = load_messages(chat_id)
-        messages.append({"role": "user", "content": message_text})
+        messages.append(
+            {"role": "user", "content": translit(message_text, 'ru', reversed=True)}
+        )
 
         # Process the message with OpenAI
         response = process_message_with_openai(messages)
@@ -164,7 +168,9 @@ def handle_message(update, context):
         response_text = response.choices[0].message.content.strip()
         if response_text:
             # Save the conversation with the new response
-            messages.append({"role": "assistant", "content": response_text})
+            messages.append(
+                {"role": "assistant", "content": translit(response_text, 'ru', reversed=True)}
+            )
             save_messages(chat_id, messages[-2:])
 
             # Send the response to the user

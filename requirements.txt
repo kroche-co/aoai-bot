@@ -3,3 +3,4 @@ transformers==4.27.1
 python-telegram-bot==v13.15
 pymongo==4.3.3
 cachetools==4.2.2
+transliterate==1.10.2
