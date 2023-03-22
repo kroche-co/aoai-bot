@@ -134,7 +134,7 @@ def save_messages(chat_id, messages):
 # Main function for handling user messages
 def handle_message(update, context):
     try:
-        message_text = update.message.text
+        message_text = update.message.text.encode('utf-8')
         chat_id = update.message.chat_id
 
         messages = load_messages(chat_id)
