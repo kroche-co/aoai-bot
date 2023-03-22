@@ -159,7 +159,7 @@ def handle_message(update, context):
 
         messages = load_messages(chat_id)
         messages.append(
-            {"role": "user", "content": translit(message_text, 'ru')}
+            {"role": "user", "content": translit(message_text, 'ru', reversed=True)}
         )
 
         # Process the message with OpenAI
@@ -171,12 +171,12 @@ def handle_message(update, context):
         if response_text:
             # Save the conversation with the new response
             messages.append(
-                {"role": "assistant", "content": translit(response_text, 'ru')}
+                {"role": "assistant", "content": translit(response_text, 'ru', reversed=True)}
             )
             save_messages(chat_id, messages[-2:])
 
             # Send the response to the user
-            bot.send_message(chat_id=chat_id, text=translit(response_text, 'ru', reversed=True))
+            bot.send_message(chat_id=chat_id, text=translit(response_text, 'ru'))
             logging.debug(f"Sent response to user {chat_id}: {response_text}")
         else:
             logging.debug(f"Received empty response from OpenAI")
