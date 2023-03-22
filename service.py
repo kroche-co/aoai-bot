@@ -56,10 +56,10 @@ dp.register_message_handler(start, commands=["start"])
 async def truncate_messages(messages, limit=2200):
     logging.debug("Truncuate messages")
 
-    length = len(json.dumps(messages[-1]))
-    if message_tokens > limit:
+    message_length = len(json.dumps(messages[-1]))
+    if message_length > limit:
         raise ValueError(
-            f"The message '{messages[-1]['content']}' contains {length} characters, which exceeds the limit ({limit})"
+            f"The message '{messages[-1]['content']}' contains {message_length} characters, which exceeds the limit ({limit})"
         )
 
     total_length = len(json.dumps(messages))
