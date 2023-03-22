@@ -3,14 +3,12 @@ import logging
 import json
 import asyncio
 import openai
-from transformers import GPT2TokenizerFast
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from cachetools import TTLCache
 
 # Set tokens and keys from environment variables
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MONGO_DB_URL = os.getenv("MONGO_DB_URL")
@@ -54,43 +52,37 @@ async def start(message: types.Message):
 
 dp.register_message_handler(start, commands=["start"])
 
-tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
 
-async def truncate_msgs_to_tokens(messages, token_limit):
+async def truncate_messages(messages, limit=2200):
     logging.debug("Truncuate messages")
 
-    tokenized_msg = tokenizer.encode(json.dumps(messages[-1]))
-    message_tokens = len(tokenized_msg)
-    if message_tokens > token_limit:
+    length = len(json.dumps(messages[-1]))
+    if message_tokens > limit:
         raise ValueError(
-            f"The message '{messages[-1]['content']}' contains {message_tokens} tokens, which exceeds the limit ({token_limit})"
+            f"The message '{messages[-1]['content']}' contains {length} characters, which exceeds the limit ({limit})"
         )
 
-    tokenized_msgs = tokenizer.encode(json.dumps(messages))
-    total_tokens = len(tokenized_msgs)
-    while total_tokens > token_limit:
+    total_length = len(json.dumps(messages))
+    while total_length > limit:
         messages.pop(0)
-        tokenized_msgs = tokenizer.encode(json.dumps(messages))
-        total_tokens = len(tokenized_msgs)
+        total_length = len(json.dumps(messages))
 
     return messages
 
 
 # Function to process the message with OpenAI
-async def process_message_with_openai(
-    msgs, token_limit=2560, response_token_limit=1536
-):
+async def process_message_with_openai(msgs):
     logging.debug(f"Trying to send messages to ChatGPT")
 
     try:
-        truncated_msgs = await truncate_msgs_to_tokens(msgs, token_limit)
+        truncated_msgs = await truncate_messages(msgs)
     except ValueError as e:
         logging.error(e)
         return f"Error: {e}"
 
     response = await openai.ChatCompletion.acreate(
         model="gpt-3.5-turbo",
-        max_tokens=response_token_limit,
+        max_tokens=1500,
         messages=truncated_msgs,
         temperature=0.66,
         presence_penalty=0.66,
@@ -104,7 +96,7 @@ async def load_messages(chat_id):
     if chat_id in cache:
         return cache[chat_id]
 
-    messages = list(await conversations.find({"chat_id": chat_id}).sort("_id", -1).limit(300).to_list(None))
+    messages = list(await conversations.find({"chat_id": chat_id}).sort("_id", -1).limit(200).to_list(None))
 
     oldest_message_id = messages[-1]["_id"] if len(messages) > 0 else None
 
