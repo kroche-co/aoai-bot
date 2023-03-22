@@ -30,7 +30,6 @@ openai.api_key = OPENAI_API_KEY
 
 # Initialize MongoDB
 client = AsyncIOMotorClient(MONGO_DB_URL)
-asyncio.get_event_loop().run_until_complete(client.admin.command("ismaster"))
 db = client["telegram_bot_db"]
 conversations = db["conversations"]
 
