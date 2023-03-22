@@ -47,6 +47,7 @@ conversations.create_index("chat_id")
 # Create a cache with a lifetime of 1 hour
 cache = TTLCache(maxsize=1024, ttl=1200)
 
+
 # Handler for the /start command
 def start(update, context):
     try:
@@ -160,8 +161,8 @@ def handle_message(update, context):
         logging.error(f"An error occurred while processing the user message: {e}")
         try:
             # Try to reconnect and send the message again
-            bot = Bot(token=TELEGRAM_TOKEN)
-            bot.send_message(chat_id=chat_id, text="Sorry, something went wrong while processing your request. Please try again.")
+            n_bot = Bot(token=TELEGRAM_TOKEN)
+            n_bot.send_message(chat_id=chat_id, text="Sorry, something went wrong while processing your request. Please try again.")
             logging.debug(f"Sent error message to user {chat_id}")
         except Exception as e:
             logging.error(f"An error occurred while trying to reconnect to Telegram bot: {e}")
