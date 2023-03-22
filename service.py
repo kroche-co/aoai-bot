@@ -89,6 +89,8 @@ def process_message_with_openai(
 ):
     logging.debug(f"Trying to send messages to ChatGPT.")
 
+    # msgs.insert(-2, {"role": "system", "content": ""})
+
     try:
         truncated_msgs = truncate_msgs_to_tokens(msgs, token_limit)
     except ValueError as e:
@@ -157,7 +159,7 @@ def handle_message(update, context):
 
         messages = load_messages(chat_id)
         messages.append(
-            {"role": "user", "content": translit(message_text, 'ru', reversed=True)}
+            {"role": "user", "content": translit(message_text, 'ru')}
         )
 
         # Process the message with OpenAI
@@ -169,12 +171,12 @@ def handle_message(update, context):
         if response_text:
             # Save the conversation with the new response
             messages.append(
-                {"role": "assistant", "content": translit(response_text, 'ru', reversed=True)}
+                {"role": "assistant", "content": translit(response_text, 'ru')}
             )
             save_messages(chat_id, messages[-2:])
 
             # Send the response to the user
-            bot.send_message(chat_id=chat_id, text=response_text)
+            bot.send_message(chat_id=chat_id, text=translit(response_text, 'ru', reversed=True))
             logging.debug(f"Sent response to user {chat_id}: {response_text}")
         else:
             logging.debug(f"Received empty response from OpenAI")
