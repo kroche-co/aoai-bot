@@ -3,14 +3,13 @@ import logging
 import json
 import asyncio
 import openai
-from transformers import GPT2TokenizerFast
+import tiktoken
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.middlewares.logging import LoggingMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from cachetools import TTLCache
 
 # Set tokens and keys from environment variables
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MONGO_DB_URL = os.getenv("MONGO_DB_URL")
@@ -54,24 +53,27 @@ async def start(message: types.Message):
 
 dp.register_message_handler(start, commands=["start"])
 
-tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
+
+async def num_tokens_from_string(string: str) -> int:
+    """Returns the number of tokens in a text string."""
+    encoding = tiktoken.get_encoding("gpt-3.5-turbo")
+    num_tokens = len(encoding.encode(string))
+    return num_tokens
+
 
 async def truncate_msgs_to_tokens(messages, token_limit):
     logging.debug("Truncuate messages")
 
-    tokenized_msg = tokenizer.encode(json.dumps(messages[-1]))
-    message_tokens = len(tokenized_msg)
-    if message_tokens > token_limit:
+    msg_length = num_tokens_from_string(json.dumps(messages[-1]))
+    if msg_length > token_limit:
         raise ValueError(
-            f"The message '{messages[-1]['content']}' contains {message_tokens} tokens, which exceeds the limit ({token_limit})"
+            f"The message '{messages[-1]['content']}' contains {msg_length} tokens, which exceeds the limit ({token_limit})"
         )
 
-    tokenized_msgs = tokenizer.encode(json.dumps(messages))
-    total_tokens = len(tokenized_msgs)
-    while total_tokens > token_limit:
+    total_length = num_tokens_from_string(json.dumps(messages))
+    while total_length > token_limit:
         messages.pop(0)
-        tokenized_msgs = tokenizer.encode(json.dumps(messages))
-        total_tokens = len(tokenized_msgs)
+        total_length = num_tokens_from_string(json.dumps(messages))
 
     return messages
 
@@ -92,9 +94,9 @@ async def process_message_with_openai(
         model="gpt-3.5-turbo",
         max_tokens=response_token_limit,
         messages=truncated_msgs,
-        temperature=0.66,
-        presence_penalty=0.66,
-        frequency_penalty=0.66,
+        temperature=0.5,
+        presence_penalty=0.5,
+        frequency_penalty=0.5,
     )
     return response
 
