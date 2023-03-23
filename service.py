@@ -54,10 +54,10 @@ async def start(message: types.Message):
 dp.register_message_handler(start, commands=["start"])
 
 
+enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
+
 async def truncate_msgs_to_tokens(messages, token_limit):
     logging.debug("Truncuate messages")
-
-    enc = tiktoken.get_encoding("gpt-3.5-turbo")
 
     msg_encoded = enc.encode(json.dumps(messages[-1]))
     msg_length = len(msg_encoded)
