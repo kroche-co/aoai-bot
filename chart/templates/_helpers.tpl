@@ -10,7 +10,7 @@ Return the proper AOAI Bot image name
 Return the proper Docker Image Registry Secret Names
 */}}
 {{- define "bot.imagePullSecrets" -}}
-{{ include "common.images.pullSecrets" (dict "images" (list .Values.image .Values.cloneStaticSiteFromGit.image .Values.metrics.image) "global" .Values.global) }}
+{{ include "common.images.pullSecrets" (dict "images" (list .Values.image) "global" .Values.global) }}
 {{- end -}}
 
 {{/*
