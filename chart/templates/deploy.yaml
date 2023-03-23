@@ -28,12 +28,6 @@ spec:
         {{- if .Values.podAnnotations }}
         {{- include "common.tplvalues.render" ( dict "value" .Values.podAnnotations "context" $) | nindent 8 }}
         {{- end }}
-        {{- if and .Values.metrics.enabled .Values.metrics.podAnnotations }}
-        {{- include "common.tplvalues.render" ( dict "value" .Values.metrics.podAnnotations "context" $) | nindent 8 }}
-        {{- end }}
-        {{- if and .Values.serverBlock (not .Values.existingServerBlockConfigmap) }}
-        checksum/server-block-configuration: {{ include (print $.Template.BasePath "/server-block-configmap.yaml") . | sha256sum }}
-        {{- end }}
     spec:
       {{- include "bot.imagePullSecrets" . | nindent 6 }}
       automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
@@ -91,12 +85,10 @@ spec:
           {{- if .Values.lifecycleHooks }}
           lifecycle: {{- include "common.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
           {{- end }}
+          {{- if .Values.extraEnvVars }}
           env:
-            - name: TOKEN
-              value: {{ .Values.containerPorts.http | quote }}
-            {{- if .Values.extraEnvVars }}
             {{- include "common.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
-            {{- end }}
+          {{- end }}
           {{- if or .Values.extraEnvVarsCM .Values.extraEnvVarsSecret }}
           envFrom:
             {{- if .Values.extraEnvVarsCM }}
