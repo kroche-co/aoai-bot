@@ -78,7 +78,7 @@ async def truncate_msgs_to_tokens(messages, token_limit):
 
 # Function to process the message with OpenAI
 async def process_message_with_openai(
-    msgs, token_limit=2560, response_token_limit=1536
+    msgs, token_limit=3000, response_token_limit=1000
 ):
     logging.debug(f"Trying to send messages to ChatGPT")
 
