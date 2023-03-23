@@ -1,4 +1,5 @@
+aiogram==2.25.1
 cachetools==5.3.0
 motor==3.1.1
 openai==0.27.2
-transformers
+transformers==4.27.2
