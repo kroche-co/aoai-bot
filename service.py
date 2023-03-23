@@ -54,26 +54,24 @@ async def start(message: types.Message):
 dp.register_message_handler(start, commands=["start"])
 
 
-async def num_tokens_from_string(string: str) -> int:
-    """Returns the number of tokens in a text string."""
-    encoding = tiktoken.get_encoding("gpt-3.5-turbo")
-    num_tokens = len(encoding.encode(string))
-    return num_tokens
-
-
 async def truncate_msgs_to_tokens(messages, token_limit):
     logging.debug("Truncuate messages")
 
-    msg_length = num_tokens_from_string(json.dumps(messages[-1]))
+    enc = tiktoken.get_encoding("gpt-3.5-turbo")
+
+    msg_encoded = enc.encode(json.dumps(messages[-1]))
+    msg_length = len(msg_encoded)
     if msg_length > token_limit:
         raise ValueError(
             f"The message '{messages[-1]['content']}' contains {msg_length} tokens, which exceeds the limit ({token_limit})"
         )
 
-    total_length = num_tokens_from_string(json.dumps(messages))
+    messages_encoded = enc.encode(json.dumps(messages))
+    total_length = len(messages_encoded)
     while total_length > token_limit:
         messages.pop(0)
-        total_length = num_tokens_from_string(json.dumps(messages))
+        messages_encoded = enc.encode(json.dumps(messages))
+        total_length = len(messages_encoded)
 
     return messages
 
