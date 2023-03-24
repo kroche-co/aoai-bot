@@ -11,7 +11,7 @@ from cachetools import TTLCache
 
 # Set tokens and keys from environment variables
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MONGO_DB_URL = os.getenv("MONGO_DB_URL")
 
 # Set logging level to DEBUG
@@ -24,14 +24,12 @@ bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher(bot)
 dp.middleware.setup(LoggingMiddleware())
 
-# Initialize OpenAI API
-openai.api_key = OPENAI_API_KEY
-
 
 # Initialize MongoDB
 client = AsyncIOMotorClient(MONGO_DB_URL)
 db = client["telegram_bot_db"]
 conversations = db["conversations"]
+tokens_collection = db["tokens"]
 
 # Create an index for chat_id if it does not already exist
 async def create_chat_id_index():
@@ -42,17 +40,6 @@ asyncio.get_event_loop().run_until_complete(create_chat_id_index())
 
 # Create a cache with a lifetime of 20 minutes
 cache = TTLCache(maxsize=1024, ttl=1200)
-
-# Handler for the /start command
-async def start(message: types.Message):
-    try:
-        await bot.send_message(chat_id=message.chat.id, text="Hello! I'm ready to work.")
-        logging.info(f"User {message.chat.id} started the bot")
-    except Exception as e:
-        logging.error(f"An error occurred while processing the /start command: {e}")
-
-dp.register_message_handler(start, commands=["start"])
-
 
 enc = tiktoken.encoding_for_model("gpt-3.5-turbo")
 
@@ -74,6 +61,39 @@ async def truncate_msgs_to_tokens(messages, token_limit):
         total_length = len(messages_encoded)
 
     return messages
+
+
+# Handler for the /start command
+@dp.message_handler(commands=['start'])
+async def start(message: types.Message):
+    try:
+        await message.reply("Hello! I'm ready to work.")
+        logging.info(f"User {message.chat.id} started the bot")
+    except Exception as e:
+        logging.error(f"An error occurred while processing the /start command: {e}")
+
+
+@dp.message_handler(commands=['token'])
+async def get_openai_api_token(message: types.Message):
+    if len(message.text.split()) != 2:
+        await message.reply("Пожалуйста, убедитесь, что вы отправили команду в формате /token <your_openai_api_token>.")
+        return
+
+    openai_api_token = message.text.split()[1]
+    chat_id = message.chat.id
+
+    # Save a token in the MongoDB collection.
+    await tokens_collection.update_one(
+        {'chat_id': chat_id},
+        {'$set': {'openai_api_token': openai_api_token}},
+        upsert=True
+    )
+
+    try:
+        await message.reply("Token saved.")
+        logging.info(f"User {message.chat.id} started the bot")
+    except Exception as e:
+        logging.error(f"An error occurred while processing the /token command: {e}")
 
 
 # Function to process the message with OpenAI
@@ -119,11 +139,14 @@ async def load_messages(chat_id):
 
 
 # Add message into db and update cache
-async def save_messages(chat_id, messages):
+async def save_messages(chat_id, messages, token: str=None):
     for message in messages:
         await conversations.update_one(
             {"chat_id": chat_id, "message": message},
-            {"$set": {"chat_id": chat_id, "message": message, "tags": message.get("tags", None)}},
+            {"$set": {
+                "chat_id": chat_id,
+                "message": message
+            }},
             upsert=True,
         )
 
@@ -140,6 +163,10 @@ async def handle_message(message: types.Message):
         message_text = message.text
         chat_id = message.chat.id
 
+        # Initialize OpenAI API
+        token_entry = await tokens_collection.find({"chat_id": chat_id})
+        openai.api_key = token_entry['openai_api_token']
+        # Load context
         messages = await load_messages(chat_id)
         messages.append(
             {"role": "user", "content": message_text}
