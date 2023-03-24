@@ -75,7 +75,7 @@ async def start(message: types.Message):
 @dp.message_handler(commands=['token'])
 async def get_openai_api_token(message: types.Message):
     if len(message.text.split()) != 2:
-        await message.reply("Пожалуйста, убедитесь, что вы отправили команду в формате /token <your_openai_api_token>.")
+        await message.reply("Please make sure that you sent the command in the format /token <your_openai_api_token> and that the OpenAI API token is not found for this chat.")
         return
 
     openai_api_token = message.text.split()[1]
@@ -163,7 +163,10 @@ async def handle_message(message: types.Message):
         chat_id = message.chat.id
 
         # Initialize OpenAI API
-        token_entry = await tokens_collection.find({"chat_id": chat_id})
+        token_entry = await tokens_collection.find_one({"chat_id": chat_id})
+        if not token_entry:
+            await message.reply("OpenAI API token not found for this chat.")
+            return
         openai.api_key = token_entry['openai_api_token']
 
         # Load context
