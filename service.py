@@ -75,7 +75,7 @@ async def start(message: types.Message):
 @dp.message_handler(commands=['token'])
 async def get_openai_api_token(message: types.Message):
     if len(message.text.split()) != 2:
-        await message.reply("Please make sure that you sent the command in the format /token <your_openai_api_token> and that the OpenAI API token is not found for this chat.")
+        await message.reply("Please make sure that you sent the command in the format /token <your_openai_api_token>.")
         return
 
     openai_api_token = message.text.split()[1]
