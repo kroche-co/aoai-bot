@@ -11,7 +11,9 @@ from cachetools import TTLCache
 
 # Set tokens and keys from environment variables
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MONGO_DB_URL = os.getenv("MONGO_DB_URL")
+ALLOWED_USERS = os.getenv("ALLOWED_USERS", "").split(",")
 
 # Set logging level to DEBUG
 logging.basicConfig(
@@ -161,13 +163,16 @@ async def handle_message(message: types.Message):
     try:
         message_text = message.text
         chat_id = message.chat.id
-
+        
         # Initialize OpenAI API
-        token_entry = await tokens_collection.find_one({"chat_id": chat_id})
-        if not token_entry:
-            await message.reply("OpenAI API token not found for this chat.")
-            return
-        openai.api_key = token_entry['openai_api_token']
+        if message.from_user.username in ALLOWED_USERS:
+            openai.api_key = OPENAI_API_KEY
+        else:
+            token_entry = await tokens_collection.find_one({"chat_id": chat_id})
+            if not token_entry:
+                await message.reply("OpenAI API token not found for this chat.")
+                return
+            openai.api_key = token_entry['openai_api_token']
 
         # Load context
         messages = await load_messages(chat_id)
